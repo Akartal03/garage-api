@@ -72,7 +72,7 @@ public class VehicleController {
     public ResponseEntity<?> getGarageStatus() {
         try {
             List<VehicleStatusDto> vehicleStatusDtos = vehicleService.getGarageStatus();
-            if(vehicleStatusDtos.isEmpty()){
+            if (vehicleStatusDtos.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No parking car");
             }
             return ResponseEntity.ok(vehicleStatusDtos);
@@ -91,7 +91,7 @@ public class VehicleController {
     public ResponseEntity<?> leave(@RequestBody VehicleLeavingDto vehicleLeavingDto) {
         try {
             Optional<Ticket> ticket = vehicleService.getTicketByTicketNumber(vehicleLeavingDto);
-            if(ticket.isEmpty() || ticket.get().getStatus().equals(Ticket.Status.LEAVED)){
+            if (ticket.isEmpty() || ticket.get().getStatus().equals(Ticket.Status.LEAVED)) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No parking car");
             }
 
