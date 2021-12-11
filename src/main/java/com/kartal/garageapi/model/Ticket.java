@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.redis.core.RedisHash;
+import org.springframework.data.redis.core.index.Indexed;
 
 import java.io.Serializable;
 import java.util.Date;
@@ -15,13 +16,15 @@ import java.util.Date;
 @Getter
 public class Ticket implements Serializable {
     @Id
+    @Indexed
+    private String plate;
     private String ticketNumber;
     private String color;
-    private String plate;
     private Status status;
     private byte slot;
     private Date parketAt;
     private Date leavedAt;
+    private byte numberOfSlots;
 
     public enum Status {
         PARKED, LEAVED

@@ -1,12 +1,13 @@
 package com.kartal.garageapi.controller;
 
-import com.kartal.garageapi.dto.TicketDto;
 import com.kartal.garageapi.dto.VehicleParkingDto;
 import com.kartal.garageapi.exception.GarageFullException;
 import com.kartal.garageapi.exception.VehicleNotFoundException;
+import com.kartal.garageapi.model.Ticket;
 import com.kartal.garageapi.model.Vehicle;
 import com.kartal.garageapi.model.VehicleFactory;
 import com.kartal.garageapi.service.VehicleService;
+import com.kartal.garageapi.util.PlateFunctions;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiResponse;
@@ -20,7 +21,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.regex.Pattern;
 
 @RestController
 @Slf4j
@@ -41,12 +41,16 @@ public class VehicleController {
     })
     public ResponseEntity<?> parkVehicle(@RequestBody VehicleParkingDto vehicleParkingDto) {
         try {
-            if(!isValidPlate(vehicleParkingDto.getPlate())){
+            if (!PlateFunctions.isValidPlate(vehicleParkingDto.getPlate())) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid plate number");
             }
 
+            if (vehicleService.isParkedVehicle(vehicleParkingDto)) {
+                return ResponseEntity.status(HttpStatus.ALREADY_REPORTED).body("Vehicle has already parked");
+            }
+
             Vehicle vehicle = VehicleFactory.buildVehicle(vehicleParkingDto.getType());
-            Object ticketDto = vehicleService.parkVehicle(vehicle, vehicleParkingDto);
+            Ticket ticketDto = vehicleService.parkVehicle(vehicle, vehicleParkingDto);
             return ResponseEntity.ok(ticketDto);
 
         } catch (VehicleNotFoundException ex) {
@@ -54,14 +58,6 @@ public class VehicleController {
         } catch (GarageFullException e) {
             return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE).body("Garage is full, sorry.");
         }
-    }
-
-    /*
-    ** check whether turkish plate number is valid
-     */
-    private boolean isValidPlate(String plate) {
-        String plateRegex = "^([0-9]{2})-([A-Za-z]{1,3})-([0-9]{2,4})$";
-        return Pattern.matches(plateRegex, plate);
     }
 
 }
