@@ -1,6 +1,8 @@
 package com.kartal.garageapi.controller;
 
+import com.kartal.garageapi.dto.VehicleLeavingDto;
 import com.kartal.garageapi.dto.VehicleParkingDto;
+import com.kartal.garageapi.dto.VehicleStatusDto;
 import com.kartal.garageapi.exception.GarageFullException;
 import com.kartal.garageapi.exception.VehicleNotFoundException;
 import com.kartal.garageapi.model.Ticket;
@@ -16,10 +18,10 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Optional;
 
 
 @RestController
@@ -60,5 +62,44 @@ public class VehicleController {
         }
     }
 
+    @GetMapping("/status")
+    @ApiOperation(value = "Garage status method")
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = "Successfully status sended!"),
+            @ApiResponse(code = 404, message = "There is no car parking"),
+            @ApiResponse(code = 500, message = "Occurred a problem, see details for info")
+    })
+    public ResponseEntity<?> getGarageStatus() {
+        try {
+            List<VehicleStatusDto> vehicleStatusDtos = vehicleService.getGarageStatus();
+            if(vehicleStatusDtos.isEmpty()){
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No parking car");
+            }
+            return ResponseEntity.ok(vehicleStatusDtos);
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ex.getMessage() != null ? ex.getMessage() : "");
+        }
+    }
+
+    @PostMapping("/leave")
+    @ApiOperation(value = "Leave garage method")
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = "Successfully vehicle leaved!"),
+            @ApiResponse(code = 404, message = "There is no car parking"),
+            @ApiResponse(code = 500, message = "Occurred a problem, see details for info")
+    })
+    public ResponseEntity<?> leave(@RequestBody VehicleLeavingDto vehicleLeavingDto) {
+        try {
+            Optional<Ticket> ticket = vehicleService.getTicketByTicketNumber(vehicleLeavingDto);
+            if(ticket.isEmpty() || ticket.get().getStatus().equals(Ticket.Status.LEAVED)){
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No parking car");
+            }
+
+            byte leavedSlot = vehicleService.leaveVehicle(ticket.get());
+            return ResponseEntity.ok("Slot is free :" + leavedSlot);
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ex.getMessage() != null ? ex.getMessage() : "");
+        }
+    }
 }
 

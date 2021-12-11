@@ -7,4 +7,5 @@ import java.util.Optional;
 
 public interface TicketRepository extends CrudRepository<Ticket, String> {
     Optional<Ticket> findByPlate(String plate);
+    Optional<Ticket> findByTicketNumber(String ticketNumber);
 }

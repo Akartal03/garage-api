@@ -1,6 +1,8 @@
 package com.kartal.garageapi.service.impl;
 
+import com.kartal.garageapi.dto.VehicleLeavingDto;
 import com.kartal.garageapi.dto.VehicleParkingDto;
+import com.kartal.garageapi.dto.VehicleStatusDto;
 import com.kartal.garageapi.exception.GarageFullException;
 import com.kartal.garageapi.model.Ticket;
 import com.kartal.garageapi.model.Vehicle;
@@ -80,6 +82,60 @@ public class VehicleServiceImpl implements VehicleService {
     public boolean isParkedVehicle(VehicleParkingDto vehicleParkingDto) {
         Optional<Ticket> ticket = ticketRepository.findByPlate(vehicleParkingDto.getPlate());
         return ticket.map(value -> value.getStatus().equals(Ticket.Status.PARKED)).orElse(false);
+    }
+
+    @Override
+    public List<VehicleStatusDto> getGarageStatus() {
+        List<Ticket> ticketList = (List<Ticket>) ticketRepository.findAll();
+        List<VehicleStatusDto> vehicleStatusDtos = new ArrayList<>(Collections.emptyList());
+        ticketList.forEach(ticket -> {
+            if (ticket.getStatus().equals(Ticket.Status.PARKED)) {
+                vehicleStatusDtos.add(VehicleStatusDto
+                        .builder()
+                        .color(ticket.getColor())
+                        .plate(ticket.getPlate())
+                                .type(getVehicleType(ticket.getNumberOfSlots()))
+                        .slots(getSlots(ticket))
+                        .build());
+            }
+        });
+        return vehicleStatusDtos;
+    }
+
+    @Override
+    public Optional<Ticket> getTicketByTicketNumber(VehicleLeavingDto vehicleLeavingDto) {
+        return ticketRepository.findByTicketNumber(vehicleLeavingDto.getTicketNumber());
+    }
+
+    @Override
+    public byte leaveVehicle(Ticket ticket) {
+        leaveVehicleSync(ticket.getSlot());
+        ticket.setLeavedAt(new Date());
+        ticket.setStatus(Ticket.Status.LEAVED);
+        ticketRepository.save(ticket);
+        log.info("Leaved: {} slot {}", ticket.getPlate(), ticket.getSlot());
+        return ticket.getSlot();
+    }
+
+    private synchronized void leaveVehicleSync(byte slot) {
+        this.availableSlots[slot] = -1;
+    }
+
+    private String getVehicleType(byte numberOfSlots) {
+        if(numberOfSlots == 1){
+            return "Car";
+        }else if(numberOfSlots == 2){
+            return "Jeep";
+        }
+        return "Truck";
+    }
+
+    private int[] getSlots(Ticket ticket) {
+        int[] slots = new int[ticket.getNumberOfSlots()];
+        for (byte i = 0; i < ticket.getNumberOfSlots(); i++) {
+            slots[i] = ticket.getSlot() + i;
+        }
+        return slots;
     }
 
     /*

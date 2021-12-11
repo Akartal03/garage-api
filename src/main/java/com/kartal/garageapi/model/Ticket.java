@@ -17,8 +17,9 @@ import java.util.Date;
 public class Ticket implements Serializable {
     @Id
     @Indexed
-    private String plate;
     private String ticketNumber;
+    @Indexed
+    private String plate;
     private String color;
     private Status status;
     private byte slot;
