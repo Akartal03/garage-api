@@ -51,6 +51,17 @@ public class VehicleServiceImpl implements VehicleService {
                 }
             }
         });
+        writeToLogAvailableSlots();
+    }
+
+    private void writeToLogAvailableSlots() {
+        List<Byte> availableSlotList = new ArrayList<>();
+        for (int i = 1; i < this.availableSlots.length; i++) {
+            if(this.availableSlots[i] != -1){
+                availableSlotList.add(this.availableSlots[i]);
+            }
+        }
+        log.info("Available slots : {}", availableSlotList);
     }
 
     @Override
@@ -94,7 +105,7 @@ public class VehicleServiceImpl implements VehicleService {
                         .builder()
                         .color(ticket.getColor())
                         .plate(ticket.getPlate())
-                                .type(getVehicleType(ticket.getNumberOfSlots()))
+                        .type(getVehicleType(ticket.getNumberOfSlots()))
                         .slots(getSlots(ticket))
                         .build());
             }
@@ -109,16 +120,19 @@ public class VehicleServiceImpl implements VehicleService {
 
     @Override
     public byte leaveVehicle(Ticket ticket) {
-        leaveVehicleSync(ticket.getSlot());
+        leaveVehicleSync(ticket);
         ticket.setLeavedAt(new Date());
         ticket.setStatus(Ticket.Status.LEAVED);
         ticketRepository.save(ticket);
         log.info("Leaved: {} slot {}", ticket.getPlate(), ticket.getSlot());
+        writeToLogAvailableSlots();
         return ticket.getSlot();
     }
 
-    private synchronized void leaveVehicleSync(byte slot) {
-        this.availableSlots[slot] = -1;
+    private synchronized void leaveVehicleSync(Ticket ticket) {
+        for (byte i = 0; i < ticket.getNumberOfSlots() ; i++) {
+            this.availableSlots[ticket.getSlot() + i] = (byte) (ticket.getSlot() + i);
+        }
     }
 
     private String getVehicleType(byte numberOfSlots) {
@@ -187,10 +201,12 @@ public class VehicleServiceImpl implements VehicleService {
         } else {
             byte index = getAvailableSlotIndexForMoreThanOneSlotLenght(slotNumber, availableSlotIndex);
             this.vehiclePlateSlotNumberMap.put(plate, index);
+            byte tempValue = this.availableSlots[index];
             for (byte i = 0; i < slotNumber; i++) {
                 this.availableSlots[index] = -1;
                 index = (byte) (index + 1);
             }
+            this.vehiclePlateSlotNumberMap.put(plate, tempValue);
             log.info("Allocated {} slots", slotNumber);
         }
 
