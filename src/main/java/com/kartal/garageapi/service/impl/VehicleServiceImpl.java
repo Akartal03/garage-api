@@ -20,10 +20,9 @@ import java.util.*;
 public class VehicleServiceImpl implements VehicleService {
 
     private final TicketRepository ticketRepository;
-
     @Value("${app.garage.number_of_slots}")
-    private byte MAX_SLOT;
-    private byte[] availableSlots;
+    private byte maxSlot;
+    private final byte[] availableSlots = new byte[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
     private final HashMap<String, Byte> vehiclePlateSlotNumberMap = new HashMap<>();
 
     public VehicleServiceImpl(TicketRepository ticketRepository) {
@@ -35,44 +34,32 @@ public class VehicleServiceImpl implements VehicleService {
      */
     @PostConstruct
     public void init() {
-        this.availableSlots = new byte[MAX_SLOT + 1];
-        for (byte i = 1; i <= this.MAX_SLOT; i++) {
-            this.availableSlots[i] = i;
-        }
-
         /*
          ** if in availableSlots an index value is -1, this index is allocated
          */
         List<Ticket> ticketList = (List<Ticket>) ticketRepository.findAll();
         ticketList.forEach(ticket -> {
             if (ticket.getStatus().equals(Ticket.Status.PARKED)) {
-                for (byte i = 0; i < ticket.getNumberOfSlots(); i++) {
-                    this.availableSlots[ticket.getSlot() + i] = -1;
+                for (byte i = 0; i < ticket.getVehicleWidht(); i++) {
+                    availableSlots[ticket.getAllocatedSlot() + i] = -1;
                 }
             }
         });
         writeToLogAvailableSlots();
     }
 
-    private void writeToLogAvailableSlots() {
-        List<Byte> availableSlotList = new ArrayList<>();
-        for (int i = 1; i < this.availableSlots.length; i++) {
-            if(this.availableSlots[i] != -1){
-                availableSlotList.add(this.availableSlots[i]);
-            }
-        }
-        log.info("Available slots : {}", availableSlotList);
-    }
-
     @Override
     public Ticket parkVehicle(Vehicle vehicle, VehicleParkingDto vehicleParkingDto) throws GarageFullException {
-        if (isGarageFull(vehicle.getSlotNumber())) {
-            log.info("Garage is full.");
-            throw new GarageFullException();
+        // thread-safe
+        synchronized (availableSlots) {
+            if (isGarageFull(vehicle.getVehicleWidht())) {
+                log.info("Garage is full.");
+                throw new GarageFullException();
+            }
+            allocateSlotToVehicle(vehicle.getVehicleWidht(), vehicleParkingDto.getPlate(), getAvailableSlotIndex());
         }
 
-        assignAvailableSlotNumber(vehicle.getSlotNumber(), vehicleParkingDto.getPlate());
-        if (this.vehiclePlateSlotNumberMap.get(vehicleParkingDto.getPlate()) == null) {
+        if (vehiclePlateSlotNumberMap.get(vehicleParkingDto.getPlate()) == null) {
             throw new GarageFullException();
         }
 
@@ -82,8 +69,8 @@ public class VehicleServiceImpl implements VehicleService {
                 .parketAt(new Date())
                 .color(vehicleParkingDto.getColor())
                 .plate(vehicleParkingDto.getPlate())
-                .slot(this.vehiclePlateSlotNumberMap.get(vehicleParkingDto.getPlate()))
-                .numberOfSlots(vehicle.getSlotNumber())
+                .allocatedSlot(vehiclePlateSlotNumberMap.remove(vehicleParkingDto.getPlate()))
+                .vehicleWidht(vehicle.getVehicleWidht())
                 .build();
         ticketRepository.save(ticket);
         return ticket;
@@ -105,8 +92,8 @@ public class VehicleServiceImpl implements VehicleService {
                         .builder()
                         .color(ticket.getColor())
                         .plate(ticket.getPlate())
-                        .type(getVehicleType(ticket.getNumberOfSlots()))
-                        .slots(getSlots(ticket))
+                        .type(getVehicleType(ticket.getVehicleWidht()))
+                        .allocatedSlots(getAllocatedSlots(ticket))
                         .build());
             }
         });
@@ -119,35 +106,37 @@ public class VehicleServiceImpl implements VehicleService {
     }
 
     @Override
-    public byte leaveVehicle(Ticket ticket) {
-        leaveVehicleSync(ticket);
+    public byte leaveGarage(Ticket ticket) {
+        synchronized (availableSlots) {
+            leaveVehicleSync(ticket);
+        }
         ticket.setLeavedAt(new Date());
         ticket.setStatus(Ticket.Status.LEAVED);
         ticketRepository.save(ticket);
-        log.info("Leaved: {} slot {}", ticket.getPlate(), ticket.getSlot());
+        log.info("Leaved: {} slot {}", ticket.getPlate(), ticket.getAllocatedSlot());
         writeToLogAvailableSlots();
-        return ticket.getSlot();
+        return ticket.getAllocatedSlot();
     }
 
-    private synchronized void leaveVehicleSync(Ticket ticket) {
-        for (byte i = 0; i < ticket.getNumberOfSlots() ; i++) {
-            this.availableSlots[ticket.getSlot() + i] = (byte) (ticket.getSlot() + i);
+    private void leaveVehicleSync(Ticket ticket) {
+        for (byte i = 0; i < ticket.getVehicleWidht(); i++) {
+            availableSlots[ticket.getAllocatedSlot() + i] = (byte) (ticket.getAllocatedSlot() + i);
         }
     }
 
     private String getVehicleType(byte numberOfSlots) {
-        if(numberOfSlots == 1){
+        if (numberOfSlots == 1) {
             return "Car";
-        }else if(numberOfSlots == 2){
+        } else if (numberOfSlots == 2) {
             return "Jeep";
         }
         return "Truck";
     }
 
-    private int[] getSlots(Ticket ticket) {
-        int[] slots = new int[ticket.getNumberOfSlots()];
-        for (byte i = 0; i < ticket.getNumberOfSlots(); i++) {
-            slots[i] = ticket.getSlot() + i;
+    private int[] getAllocatedSlots(Ticket ticket) {
+        int[] slots = new int[ticket.getVehicleWidht()];
+        for (byte i = 0; i < ticket.getVehicleWidht(); i++) {
+            slots[i] = ticket.getAllocatedSlot() + i;
         }
         return slots;
     }
@@ -156,16 +145,16 @@ public class VehicleServiceImpl implements VehicleService {
      ** check is garage full for vehicle, it also depends on vehicle widht
      */
     private boolean isGarageFull(byte slotNumber) {
-        return this.MAX_SLOT == 0 || getAvailableSlotsSize() == 0 || getAvailableSlotsSize() < slotNumber;
+        return maxSlot == 0 || getAvailableSlotSize() == 0 || getAvailableSlotSize() < slotNumber;
     }
 
     /*
      ** return how many slots is empty
      */
-    private byte getAvailableSlotsSize() {
+    private byte getAvailableSlotSize() {
         byte sum = 0;
-        for (byte i = 1; i < this.MAX_SLOT + 1; i++) {
-            if (this.availableSlots[i] != -1) {
+        for (byte i = 1; i < maxSlot + 1; i++) {
+            if (availableSlots[i] != -1) {
                 sum = (byte) (sum + 1);
             }
         }
@@ -176,38 +165,30 @@ public class VehicleServiceImpl implements VehicleService {
      ** The nearest available index
      */
     private byte getAvailableSlotIndex() {
-        for (byte i = 1; i < this.MAX_SLOT + 1; i++) {
-            if (this.availableSlots[i] != -1) {
+        for (byte i = 1; i < maxSlot + 1; i++) {
+            if (availableSlots[i] != -1) {
                 return i;
             }
         }
         return -1;
     }
 
-    /*
-     ** At same time, only one thread can allocate slots because of concurrency problem
-     */
-    private synchronized void assignAvailableSlotNumber(byte slotNumber, String plate) throws GarageFullException {
-        allocateSlotToVehicle(slotNumber, plate, getAvailableSlotIndex());
-    }
-
     private void allocateSlotToVehicle(byte slotNumber, String plate, byte availableSlotIndex) throws GarageFullException {
         if (slotNumber == 1) {
-            byte tempValue = this.availableSlots[availableSlotIndex];
-            this.availableSlots[availableSlotIndex] = -1;
-            this.vehiclePlateSlotNumberMap.put(plate, tempValue);
+            byte tempValue = availableSlots[availableSlotIndex];
+            availableSlots[availableSlotIndex] = -1;
+            vehiclePlateSlotNumberMap.put(plate, tempValue);
             log.info("Allocated 1 slot");
 
         } else {
             byte index = getAvailableSlotIndexForMoreThanOneSlotLenght(slotNumber, availableSlotIndex);
-            this.vehiclePlateSlotNumberMap.put(plate, index);
-            byte tempValue = this.availableSlots[index];
+            vehiclePlateSlotNumberMap.put(plate, index);
             for (byte i = 0; i < slotNumber; i++) {
-                this.availableSlots[index] = -1;
+                availableSlots[index] = -1;
                 index = (byte) (index + 1);
             }
-            this.vehiclePlateSlotNumberMap.put(plate, tempValue);
             log.info("Allocated {} slots", slotNumber);
+            writeToLogAvailableSlots();
         }
 
     }
@@ -215,19 +196,33 @@ public class VehicleServiceImpl implements VehicleService {
     private byte getAvailableSlotIndexForMoreThanOneSlotLenght(byte slotNumber, byte availableSlotIndex) throws GarageFullException {
         byte sum = 1;
         byte tempIndex = availableSlotIndex;
-        for (byte i = availableSlotIndex; i < MAX_SLOT + 1; i++) {
-            if (this.availableSlots[i] + 1 == this.availableSlots[i + 1]) {
-                sum = (byte) (sum + 1);
-                if (sum == slotNumber) {
-                    return tempIndex;
+        try {
+            for (byte i = availableSlotIndex; i < maxSlot + 1; i++) {
+                if (availableSlots[i] + 1 == availableSlots[i + 1]) {
+                    sum = (byte) (sum + 1);
+                    if (sum == slotNumber) {
+                        return tempIndex;
+                    }
+                } else {
+                    sum = 1;
+                    tempIndex = (byte) (i + 1);
                 }
-            } else {
-                sum = 1;
-                tempIndex = (byte) (i + 1);
+            }
+        }catch (ArrayIndexOutOfBoundsException ex){
+            log.info("Garage is full.");
+            throw new GarageFullException();
+        }
+        return -1;
+    }
+
+    private void writeToLogAvailableSlots() {
+        List<Byte> availableSlotList = new ArrayList<>();
+        for (int i = 1; i < availableSlots.length; i++) {
+            if (availableSlots[i] != -1) {
+                availableSlotList.add(availableSlots[i]);
             }
         }
-        log.info("Garage is full.");
-        throw new GarageFullException();
+        log.info("Available slots : {}", availableSlotList);
     }
 }
 

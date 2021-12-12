@@ -11,6 +11,6 @@ import lombok.Setter;
 public class VehicleStatusDto {
     private String plate;
     private String color;
-    private int[] slots;
+    private int[] allocatedSlots;
     private String type;
 }

@@ -22,10 +22,10 @@ public class Ticket implements Serializable {
     private String plate;
     private String color;
     private Status status;
-    private byte slot;
+    private byte allocatedSlot;
     private Date parketAt;
     private Date leavedAt;
-    private byte numberOfSlots;
+    private byte vehicleWidht;
 
     public enum Status {
         PARKED, LEAVED

@@ -88,14 +88,14 @@ public class VehicleController {
             @ApiResponse(code = 404, message = "There is no car parking"),
             @ApiResponse(code = 500, message = "Occurred a problem, see details for info")
     })
-    public ResponseEntity<?> leave(@RequestBody VehicleLeavingDto vehicleLeavingDto) {
+    public ResponseEntity<?> leaveGarage(@RequestBody VehicleLeavingDto vehicleLeavingDto) {
         try {
             Optional<Ticket> ticket = vehicleService.getTicketByTicketNumber(vehicleLeavingDto);
             if (ticket.isEmpty() || ticket.get().getStatus().equals(Ticket.Status.LEAVED)) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No parking car");
             }
 
-            byte leavedSlot = vehicleService.leaveVehicle(ticket.get());
+            byte leavedSlot = vehicleService.leaveGarage(ticket.get());
             return ResponseEntity.ok("Slot is free :" + leavedSlot);
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ex.getMessage() != null ? ex.getMessage() : "");

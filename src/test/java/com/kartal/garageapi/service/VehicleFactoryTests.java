@@ -40,13 +40,13 @@ class VehicleFactoryTests {
         Vehicle jeepVehicle = VehicleFactory.buildVehicle(jeep.getType());
         Vehicle carVehicle = VehicleFactory.buildVehicle(car.getType());
 
-        assertThat(carVehicle.getSlotNumber()).isEqualTo((byte) 1);
-        assertThat(truckVehicle.getSlotNumber()).isEqualTo((byte) 4);
-        assertThat(jeepVehicle.getSlotNumber()).isEqualTo((byte) 2);
+        assertThat(carVehicle.getVehicleWidht()).isEqualTo((byte) 1);
+        assertThat(truckVehicle.getVehicleWidht()).isEqualTo((byte) 4);
+        assertThat(jeepVehicle.getVehicleWidht()).isEqualTo((byte) 2);
     }
 
     @Test
-    void vehicleUnSupportedTest() {
+    void vehicleUnSupportedTypeTest() {
         VehicleParkingDto vehicleParkingDto = VehicleParkingDto
                 .builder()
                 .plate("16-JGR-42")

@@ -2,7 +2,7 @@ package com.kartal.garageapi.model;
 
 public class Jeep implements Vehicle{
     @Override
-    public byte getSlotNumber() {
+    public byte getVehicleWidht() {
         return 2;
     }
 }

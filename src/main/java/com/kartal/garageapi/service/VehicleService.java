@@ -20,5 +20,5 @@ public interface VehicleService {
 
     Optional<Ticket> getTicketByTicketNumber(VehicleLeavingDto vehicleLeavingDto);
 
-    byte leaveVehicle(Ticket ticket);
+    byte leaveGarage(Ticket ticket);
 }
