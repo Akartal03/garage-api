@@ -16,7 +16,6 @@ import java.util.Date;
 @Getter
 public class Ticket implements Serializable {
     @Id
-    @Indexed
     private String ticketNumber;
     @Indexed
     private String plate;

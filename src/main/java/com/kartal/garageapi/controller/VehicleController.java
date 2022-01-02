@@ -20,6 +20,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
 import java.util.List;
 import java.util.Optional;
 
@@ -41,7 +42,7 @@ public class VehicleController {
             @ApiResponse(code = 406, message = "Garage is full"),
             @ApiResponse(code = 500, message = "Occurred a problem, see details for info")
     })
-    public ResponseEntity<?> parkVehicle(@RequestBody VehicleParkingDto vehicleParkingDto) {
+    public ResponseEntity<?> parkVehicle(@Valid @RequestBody VehicleParkingDto vehicleParkingDto) {
         try {
             if (!PlateFunctions.isValidPlate(vehicleParkingDto.getPlate())) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid plate number");
@@ -88,7 +89,7 @@ public class VehicleController {
             @ApiResponse(code = 404, message = "There is no car parking"),
             @ApiResponse(code = 500, message = "Occurred a problem, see details for info")
     })
-    public ResponseEntity<?> leaveGarage(@RequestBody VehicleLeavingDto vehicleLeavingDto) {
+    public ResponseEntity<?> leaveGarage(@Valid @RequestBody VehicleLeavingDto vehicleLeavingDto) {
         try {
             Optional<Ticket> ticket = vehicleService.getTicketByTicketNumber(vehicleLeavingDto);
             if (ticket.isEmpty() || ticket.get().getStatus().equals(Ticket.Status.LEAVED)) {
