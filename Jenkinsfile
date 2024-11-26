@@ -1,9 +1,5 @@
 pipeline {
-    agent {
-        node {
-            label 'dev'
-        }
-    }
+    agent any
 
     stages {
         stage("Code") {
@@ -11,9 +7,17 @@ pipeline {
                 git url: "https://github.com/Akartal03/garage-api.git", branch: "main"
             }
         }
+
+
         stage("Build") {
+           agent {
+                  docker { image 'maven:3-alpine'
+                            args '-u root'
+                          }
+                   }
             steps {
                 sh "whoami"
+                sh "mvn clean install -DskipTests"
                 sh "docker build -t garage-api:1.0.0 ."
             }
         }
@@ -23,7 +27,7 @@ pipeline {
                     sh "docker image tag garage-api:1.0.0 $DockerUsername/garage-api:1.0.0"
                     sh "docker login -u $DockerUsername -p $DockerPassword"
                     sh "docker push $DockerUsername/garage-api:1.0.0"
-                }""
+                }
             }
         }
         stage("Docker Compose") {
