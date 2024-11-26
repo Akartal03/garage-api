@@ -1,4 +1,4 @@
-FROM adoptopenjdk/openjdk11:jdk-11.0.2.9-slim
+FROM openjdk:21-slim
 LABEL maintainer="Abdullah Kartal <akartal03@hotmail.com>"
 LABEL version="1.0"
 LABEL description="Garage api"

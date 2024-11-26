@@ -10,17 +10,13 @@ import com.kartal.garageapi.model.Vehicle;
 import com.kartal.garageapi.model.VehicleFactory;
 import com.kartal.garageapi.service.VehicleService;
 import com.kartal.garageapi.util.PlateFunctions;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiResponse;
-import io.swagger.annotations.ApiResponses;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,20 +24,12 @@ import java.util.Optional;
 @RestController
 @Slf4j
 @RequestMapping("/api/v1/garage/vehicle")
-@Api(value = "Garage Api documentation")
 @AllArgsConstructor
 public class VehicleController {
 
     private final VehicleService vehicleService;
 
     @PostMapping("/park")
-    @ApiOperation(value = "Vehicle park method")
-    @ApiResponses(value = {
-            @ApiResponse(code = 200, message = "Successfully vehicle parked!"),
-            @ApiResponse(code = 400, message = "Invalid data about vehicle"),
-            @ApiResponse(code = 406, message = "Garage is full"),
-            @ApiResponse(code = 500, message = "Occurred a problem, see details for info")
-    })
     public ResponseEntity<?> parkVehicle(@Valid @RequestBody VehicleParkingDto vehicleParkingDto) {
         try {
             if (!PlateFunctions.isValidPlate(vehicleParkingDto.getPlate())) {
@@ -64,12 +52,6 @@ public class VehicleController {
     }
 
     @GetMapping("/status")
-    @ApiOperation(value = "Garage status method")
-    @ApiResponses(value = {
-            @ApiResponse(code = 200, message = "Successfully status sended!"),
-            @ApiResponse(code = 404, message = "There is no car parking"),
-            @ApiResponse(code = 500, message = "Occurred a problem, see details for info")
-    })
     public ResponseEntity<?> getGarageStatus() {
         try {
             List<VehicleStatusDto> vehicleStatusDtos = vehicleService.getGarageStatus();
@@ -83,12 +65,6 @@ public class VehicleController {
     }
 
     @PostMapping("/leave")
-    @ApiOperation(value = "Leave garage method")
-    @ApiResponses(value = {
-            @ApiResponse(code = 200, message = "Successfully vehicle leaved!"),
-            @ApiResponse(code = 404, message = "There is no car parking"),
-            @ApiResponse(code = 500, message = "Occurred a problem, see details for info")
-    })
     public ResponseEntity<?> leaveGarage(@Valid @RequestBody VehicleLeavingDto vehicleLeavingDto) {
         try {
             Optional<Ticket> ticket = vehicleService.getTicketByTicketNumber(vehicleLeavingDto);

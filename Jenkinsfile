@@ -12,7 +12,6 @@ pipeline {
         stage("Build") {
            agent {
                   docker { image 'maven:3-alpine'
-                            args '-u root'
                           }
                    }
             steps {
@@ -24,8 +23,8 @@ pipeline {
         stage("Docker push") {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'DockerCreds', usernameVariable: '2974', passwordVariable: 'Tensai10*')]) {
-                    sh "docker image tag garage-api:1.0.0 $DockerUsername/garage-api:1.0.0"
                     sh "docker login -u $DockerUsername -p $DockerPassword"
+                    sh "docker image tag garage-api:1.0.0 $DockerUsername/garage-api:1.0.0"
                     sh "docker push $DockerUsername/garage-api:1.0.0"
                 }
             }
